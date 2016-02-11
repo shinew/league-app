@@ -18,7 +18,7 @@ _logger = logging.getLogger()
 
 
 class TaskQueue(object):
-    '''A generic multithreaded, asynchronous task queue that supports rate limits.
+    '''A generic thread-safe task queue that supports rate limits.
 
     Provides second-level granularity for rate limiting.
 
@@ -34,13 +34,9 @@ class TaskQueue(object):
         assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) for x in rate_limits), \
                 'rate limits must be of type (num_requests, num_seconds).'
 
-        self.rate_limits = rate_limits
-        self.task_limit = task_limit
-
-        self._queue = queue.Queue(maxsize=self.task_limit)
-        self._rate_counter_lock = threading.Lock()
-        now = math.ceil(time.time())
-        self._rate_counters = [RateCounter(now, x[1], x[0]) for x in self.rate_limits]
+        self._queue = queue.Queue(maxsize=task_limit)
+        self._rate_counters_lock = threading.Lock()
+        self._rate_counters = _RateCounterGroup(rate_limits)
 
     def put(self, task):
         '''Adds an async task to the queue. If full, returns False, else returns True.
@@ -63,47 +59,75 @@ class TaskQueue(object):
         Thread-safe.
 
         '''
-        with self._rate_counter_lock:
+        with self._rate_counters_lock:
             now = math.ceil(time.time())
-            if all(x.ok(now) for x in self._rate_counters):
+            if self._rate_counters.can_add(now):
                 task = None
                 try:
                     task = self._queue.get_nowait()
                 except queue.Empty:
                     return
                 else:
-                    [x.increment(now) for x in self._rate_counters]
+                    self._rate_counters.increment(now)
                     return task
 
 
-class RateCounter(object):
+class _RateCounterGroup(object):
+    '''A collection of rate counters.
+
+    Not thread-safe.
+
+    '''
+    def __init__(self, rate_limits):
+        self._rate_counters = [_RateCounter(x[0], x[1]) for x in rate_limits]
+
+    def __repr__(self):
+        return '\t'.join(x.__repr__() for x in self._rate_counters)
+
+    def start(self, now):
+        [x.start(now) for x in self._rate_counters]
+
+    def can_add(self, now):
+        return all(x.can_add(now) for x in self._rate_counters)
+
+    def increment(self, now):
+        [x.increment(now) for x in self._rate_counters]
+
+
+class _RateCounter(object):
     '''A dummy for storing rate counts.
 
     Not thread-safe.
 
     '''
-    def __init__(self, start, interval, limit, count=0):
-        self.start = start
-        self.interval = interval
-        self.limit = limit
-        self.count = count
+    def __init__(self, limit, interval, count=0):
+        self._limit = limit
+        self._interval = interval
+        self._count = count
+        self._start = None
 
     def __repr__(self):
         return 'RateCounter(start=%s, next=%s, count=%s, limit=%s)' % \
-                (self.start, self.start + self.interval, self.count, self.limit)
+                (self._start, self._start + self._interval, self._count, self._limit)
 
-    def ok(self, now):
-        ''' Returns True iff count < limit.'''
-        self.reset(now)
-        return self.count < self.limit
+    def _reset(self, now):
+        '''Possibly resets the counter.'''
+        if self._start and now - self._start >= self._interval:
+            self._start = now
+            self._count = 0
+
+    def start(now):
+        '''Starts timing from `now`.'''
+        self._start = now
+
+    def can_add(self, now):
+        '''Returns True iff under the limit.'''
+        self._reset(now)
+        return self._count < self._limit
 
     def increment(self, now):
-        ''' Adds 1 to the counter.'''
-        self.reset(now)
-        self.count += 1
-
-    def reset(self, now):
-        '''Possibly resets the counter.'''
-        if now - self.start >= self.interval:
-            self.start = now
-            self.count = 0
+        '''Adds 1 to the counter.'''
+        if self._start is None:
+            self._start = now
+        self._reset(now)
+        self._count += 1
