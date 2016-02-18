@@ -3,12 +3,9 @@ __doc__ = '''Interface to handle network-related functionality.
 '''
 
 
-import asyncio
-import concurrent.futures
 import logging
 import math
 import queue
-import random
 import threading
 import time
 
@@ -19,11 +16,10 @@ _logger = logging.getLogger()
 class TaskQueue(object):
     '''A generic thread-safe task queue that supports rate limits.
     Provides rate limiting conservatively rounded to the second.
-    '''
 
+    '''
     def __init__(self, rate_limits=[], task_limit=0):
-        '''
-        Args:
+        '''Args:
             rate_limits: a list of (num_requests, num_seconds), where we can send a max of
                 num_requests within num_seconds.
             task_limit: maximum number of tasks we should enqueue. Default to unlimited.
@@ -41,7 +37,7 @@ class TaskQueue(object):
         try:
             self._queue.put_nowait(task)
         except queue.Full:
-            _logger.warning("Failed to add task %s to the full task queue.", task)
+            _logger.warning('Failed to add task %s to the full task queue.', task)
             return False
         else:
             return True
@@ -62,11 +58,15 @@ class TaskQueue(object):
                     self._rate_counters.increment(now)
                     return task
 
+    def task_done(self):
+        '''Indicates a previously gotten task has completed.'''
+        self._queue.task_done()
+
 
 class RateCounterGroup(object):
     '''A collection of rate counters. Not thread-safe.
-    '''
 
+    '''
     def __init__(self, rate_limits):
         self._rate_counters = [RateCounter(x[0], x[1]) for x in rate_limits]
 
@@ -87,8 +87,8 @@ class RateCounterGroup(object):
 
 class RateCounter(object):
     '''A dummy for storing rate counts. Not thread-safe.
-    '''
 
+    '''
     def __init__(self, limit, interval, count=0):
         self._limit = limit
         self._interval = interval
@@ -125,11 +125,12 @@ class RateCounter(object):
 class Scheduler(object):
     '''A generic scheduler that will keep running the same function infinite times on multiple
     threads.
-    '''
 
+    '''
     def __init__(self, func, sleep_duration=0.5, num_threads=1):
         assert num_threads > 0, \
                 'Must have at least 1 thread for the Scheduler to run.'
+        assert callable(func), 'func must be callable.'
         self._func = func
         self.sleep_duration = sleep_duration
         self._num_threads = num_threads
@@ -143,11 +144,17 @@ class FunctionalThread(threading.Thread):
     '''A thread that can be passed in a function to be called once in a while.'''
 
     def __init__(self, func, sleep_duration=0.5):
+        '''Args:
+            func: a function that returns True if it wants to sleep.
+        '''
+        assert callable(func), 'func must be callable.'
         super().__init__()
         self._func = func
         self._sleep_duration = sleep_duration
 
     def run(self):
+        '''Override.'''
         while True:
-            self._func()
-            time.sleep(self._sleep_duration)
+            should_sleep = self._func()
+            if should_sleep:
+                time.sleep(self._sleep_duration)
