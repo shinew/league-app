@@ -6,9 +6,9 @@
 *.pyd
 *.pyo
 *.so
+*.swp
 *.tar.gz
 *~
-*.swp
 .DS_Store
 .Python
 .cache
