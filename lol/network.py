@@ -24,8 +24,6 @@ class TaskQueue(object):
                 num_requests within num_seconds.
             task_limit: maximum number of tasks we should enqueue. Default to unlimited.
         '''
-        assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) for x in rate_limits), \
-                'rate limits must be of type (num_requests, num_seconds).'
         self._queue = queue.Queue(maxsize=task_limit)
         self._rate_counters_lock = threading.Lock()
         self._rate_counters = RateCounterGroup(rate_limits)
@@ -68,14 +66,12 @@ class RateCounterGroup(object):
 
     '''
     def __init__(self, rate_limits):
+        assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) for x in rate_limits), \
+                'rate limits must be of type (num_requests, num_seconds).'
         self._rate_counters = [RateCounter(x[0], x[1]) for x in rate_limits]
 
     def __repr__(self):
         return '\t'.join(x.__repr__() for x in self._rate_counters)
-
-    def start(self, now):
-        for x in self._rate_counters:
-            x.start(now)
 
     def can_add(self, now):
         return all(x.can_add(now) for x in self._rate_counters)
@@ -105,17 +101,13 @@ class RateCounter(object):
             self._start = now
             self._count = 0
 
-    def start(now):
-        '''Starts timing from now.'''
-        self._start = now
-
     def can_add(self, now):
         '''Returns True iff under the limit.'''
         self._reset(now)
         return self._count < self._limit
 
     def increment(self, now):
-        '''Adds 1 to the counter.'''
+        '''Automatically starts the timer, and adds 1 to the counter.'''
         if self._start is None:
             self._start = now
         self._reset(now)
