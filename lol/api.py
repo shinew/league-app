@@ -3,9 +3,8 @@ __doc__ = '''Interface to handle generic API-related functionality.
 '''
 
 
+import lol.network as network
 import threading
-
-from lol.network import TaskQueue, Scheduler
 
 
 class APIQueueScheduler(object):
@@ -28,8 +27,8 @@ class APIQueueScheduler(object):
             for i in range(len(rate_limits)):
                 rate_limits[i] = (rate_limits[i][0] * len(api_keys), rate_limits[i][1])
 
-        self._queue = TaskQueue(rate_limits=rate_limits, task_limit=task_limit)
-        self._scheduler = Scheduler(self._check_and_run_task,
+        self._queue = network.TaskQueue(rate_limits=rate_limits, task_limit=task_limit)
+        self._scheduler = network.Scheduler(self._check_and_run_task,
                 sleep_duration=sleep_duration, num_threads=num_threads)
         self._api_keys = api_keys
         self._need_key = len(api_keys) >= 1
