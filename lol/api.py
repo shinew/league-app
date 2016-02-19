@@ -13,10 +13,12 @@ class APIQueueScheduler(object):
 
     def __init__(self, api_keys=[], rate_limits=[], task_limit=0, sleep_duration=0.5,
             num_threads=1):
-        '''Args:
+        '''
+        Args:
             api_keys: if this is set, a key will be passed onto the task as a param.
             rate_limits: a list of (num_requests, num_seconds), where we can send a max of
                 num_requests within num_seconds for each key.
+
         '''
         assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) for x in rate_limits), \
                 'rate limits must be of type (num_requests, num_seconds).'
@@ -36,7 +38,7 @@ class APIQueueScheduler(object):
             self._key_lock = threading.Lock()
 
     def put(self, task):
-        '''Adds a task to the queue.'''
+        '''Adds a task to the queue. Thread-safe.'''
         return self._queue.put(task)
 
     def start(self):
@@ -44,7 +46,7 @@ class APIQueueScheduler(object):
         self._scheduler.start()
 
     def _check_and_run_task(self):
-        '''Runs a task if available. Returns False iff a task was run.'''
+        '''Runs a task if available. Returns True iff a task was run.'''
         task = self._queue.get()
         if task:
             assert callable(task), 'Task must be callable with the argument APIQueueScheduler.'
@@ -53,10 +55,10 @@ class APIQueueScheduler(object):
                 with self._key_lock:
                     key = self._api_keys[self._key_counter]
                     self._key_counter = (self._key_counter + 1) % len(self._api_keys)
-                task(self, key=key)
+                task(key)
             else:
-                task(self)
+                task()
             self._queue.task_done()
-            return False
-        else:
             return True
+        else:
+            return False

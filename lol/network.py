@@ -19,10 +19,12 @@ class TaskQueue(object):
 
     '''
     def __init__(self, rate_limits=[], task_limit=0):
-        '''Args:
+        '''
+        Args:
             rate_limits: a list of (num_requests, num_seconds), where we can send a max of
                 num_requests within num_seconds.
             task_limit: maximum number of tasks we should enqueue. Default to unlimited.
+
         '''
         self._queue = queue.Queue(maxsize=task_limit)
         self._rate_counters_lock = threading.Lock()
@@ -31,6 +33,7 @@ class TaskQueue(object):
     def put(self, task):
         '''Adds an async task to the queue. If full, returns False, else returns True.
         Thread-safe.
+
         '''
         try:
             self._queue.put_nowait(task)
@@ -43,6 +46,7 @@ class TaskQueue(object):
     def get(self):
         '''Returns a task iff the caller can execute the task given the time limit, else returns
         None. Thread-safe.
+
         '''
         with self._rate_counters_lock:
             now = math.ceil(time.time())
@@ -136,8 +140,10 @@ class FunctionalThread(threading.Thread):
     '''A thread that can be passed in a function to be called once in a while.'''
 
     def __init__(self, func, sleep_duration=0.5):
-        '''Args:
-            func: a function that returns True if it wants to sleep.
+        '''
+        Args:
+            func: a function that returns True if it wants to keep running without sleeping.
+
         '''
         assert callable(func), 'func must be callable.'
         super().__init__()
@@ -147,6 +153,6 @@ class FunctionalThread(threading.Thread):
     def run(self):
         '''Override.'''
         while True:
-            should_sleep = self._func()
-            if should_sleep:
+            keep_running = self._func()
+            if not keep_running:
                 time.sleep(self._sleep_duration)
