@@ -1,4 +1,4 @@
-# SCHEMA
+# Schema
 ## season
 To store season data.
 
