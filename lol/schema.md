@@ -1,19 +1,4 @@
 # Schema
-## season
-To store season data.
-
-| name             | type |
-| ---              | ---  |
-| season_id (key1) | int  |
-| season_name      | str  |
-
-## season_match
-To iterate over all matches of a season.
-
-| name             | type |
-| ---              | ---  |
-| season_id (key1) | int  |
-| match_id (key2)  | int  |
 
 ## match
 To store match data.
@@ -36,6 +21,7 @@ To iterate over summoners in a match.
 | champion_id                        | int  |
 | cs                                 | int  |
 | deaths                             | int  |
+| division_id                        | int  |
 | gold_earned                        | int  |
 | kills                              | int  |
 | magic_damage_dealt_to_champions    | int  |
