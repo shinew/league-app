@@ -6,7 +6,6 @@ To store match data.
 | name            | type |
 | ---             | ---  |
 | match_id (key1) | int  |
-| season_id       | int  |
 | creation_time   | int  |
 | duration        | int  |
 
