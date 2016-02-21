@@ -27,7 +27,6 @@ class TaskQueue(object):
             task_limit: maximum number of tasks we should enqueue. Default to
                 unlimited.
         '''
-
         self._queue = queue.Queue(maxsize=task_limit)
         self._rate_counters_lock = threading.Lock()
         self._rate_counters = RateCounterPool(rate_limits)
@@ -36,7 +35,6 @@ class TaskQueue(object):
         '''Adds an async task to the queue. If full, returns False, else returns
         True. Thread-safe.
         '''
-
         try:
             self._queue.put_nowait(task)
         except queue.Full:
@@ -48,7 +46,6 @@ class TaskQueue(object):
 
     def can_get(self):
         '''Returns True iff a task is available to get.'''
-
         with self._rate_counters_lock:
             now = math.ceil(time.time())
             if self._rate_counters.can_add(now) and not self._queue.empty():
@@ -60,7 +57,6 @@ class TaskQueue(object):
         '''Returns a task iff the caller can execute the task given the time
         limit, else returns None. Thread-safe.
         '''
-
         with self._rate_counters_lock:
             now = math.ceil(time.time())
             if self._rate_counters.can_add(now):
@@ -75,7 +71,6 @@ class TaskQueue(object):
 
     def task_done(self):
         '''Indicates a previously gotten task has completed.'''
-
         self._queue.task_done()
 
 
@@ -98,7 +93,6 @@ class RateCounterPool(object):
 
     def increment(self, now):
         '''Automatically starts the timer, and adds 1 to the counters.'''
-
         for x in self._rate_counters:
             x.increment(now)
 
@@ -119,13 +113,11 @@ class RateCounter(object):
 
     def can_add(self, now):
         '''Returns true iff a task can be run given the rate limit.'''
-
         self._maybe_reset(now)
         return self._count < self._limit
 
     def increment(self, now):
         '''Automatically starts the timer, and adds 1 to the counter.'''
-
         if self._start is None:
             self._start = now
         self._maybe_reset(now)
@@ -146,7 +138,6 @@ class FunctionalThreadPool(object):
         '''Args:
             num_threads: number of threads to use. Default to 1.
         '''
-
         assert num_threads > 0, \
                 'Must have at least 1 thread for the Scheduler to run.'
         assert callable(func), 'func must be callable.'
@@ -155,7 +146,6 @@ class FunctionalThreadPool(object):
 
     def start(self):
         '''Starts running the thread pool.'''
-
         def run_forever(f):
             def g():
                 while True:

@@ -22,7 +22,6 @@ class APITaskQueue(object):
                 unlimited.
             num_threads: number of threads to use. Default to 1.
         '''
-
         assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) for x in rate_limits), \
                 'rate limits must be of type (num_requests, num_seconds).'
 
@@ -46,7 +45,6 @@ class APITaskQueue(object):
 
     def put(self, task):
         '''Adds a task to the queue. Thread-safe.'''
-
         success = self._queue.put(task)
         if success:
             with self._cv:
@@ -56,7 +54,6 @@ class APITaskQueue(object):
     def start(self):
         '''Activates the scheduler. Queue should be seeded before running this.
         '''
-
         PeekQueueThread(self._queue, self._cv).start()
         self._thread_pool.start()
 
@@ -79,7 +76,6 @@ class APITaskQueue(object):
 
 class PeekQueueThread(threading.Thread):
     '''Thread that occasionally checks if there is something in the queue.'''
-
     def __init__(self, queue, notify_cv, sleep_duration=0.25):
         super().__init__()
         self._queue = queue
