@@ -1,16 +1,26 @@
-from lol.api import APIQueueScheduler
+from lol.api import APITaskQueue, create_task
 import threading
 import time
 
 
-s = APIQueueScheduler(api_keys=['shine', 'xian', 'wang'], rate_limits=[(10, 20)], num_threads=20,
-        sleep_duration=0.1)
+s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[(2,1)],
+        num_threads=40)
 
-def f(key):
+class Counter(object):
+    def __init__(self):
+        self.counter = 0
+        self.lock = threading.Lock()
+
+g = Counter()
+
+def f(key=''):
     print('I was passed an API key {}'.format(key))
     print('Called from {:d} at {:.0f}'.format(threading.get_ident(), time.time()))
+    with g.lock:
+        g.counter += 1
+        print('Counter={:d}'.format(g.counter))
     time.sleep(1)
-    s.put(f)
+    s.put(create_task(f))
 
-[s.put(f) for _ in range(20)]
+[s.put(create_task(f)) for _ in range(40)]
 s.start()
