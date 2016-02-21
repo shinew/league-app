@@ -1,4 +1,4 @@
-__doc__ = '''Interface to handle generic API-related functionality.
+__doc__ = '''Interface for rate-limited API tasks.
 
 '''
 
@@ -9,6 +9,7 @@ import time
 
 
 class APITaskQueue(object):
+    '''Rate-limited multi-threaded task queue.'''
 
     def __init__(self, api_keys=[], rate_limits=[], task_limit=0,
             num_threads=1):

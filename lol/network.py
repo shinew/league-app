@@ -1,4 +1,4 @@
-__doc__ = '''Interface to handle network-related functionality.
+__doc__ = '''Multithreaded and thread-safe components.
 
 '''
 
