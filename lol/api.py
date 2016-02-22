@@ -3,9 +3,10 @@ __doc__ = '''Interface for rate-limited API tasks.
 '''
 
 
-import lol.network as network
 import threading
 import time
+
+from lol.network import TaskQueue, FunctionalThreadPool
 
 
 class APITaskQueue(object):
@@ -31,13 +32,11 @@ class APITaskQueue(object):
                 rate_limits[i] = (rate_limits[i][0] * len(api_keys),
                         rate_limits[i][1])
 
-        self._queue = network.TaskQueue(rate_limits=rate_limits,
-                task_limit=task_limit)
-        self._thread_pool = network.FunctionalThreadPool(self._check_and_run,
-                num_threads=num_threads)
-        self._api_keys = api_keys
+        self._queue = TaskQueue(rate_limits=rate_limits, task_limit=task_limit)
+        self._thread_pool = FunctionalThreadPool(self._check_and_run, num_threads=num_threads)
 
-        self._need_key = len(api_keys) >= 1
+        self._api_keys = api_keys
+        self._need_key = len(api_keys) > 0
         if self._need_key:
             self._key_counter = 0
             self._key_lock = threading.Lock()
