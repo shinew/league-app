@@ -43,9 +43,9 @@ class APITaskQueue(object):
             self._key_lock = threading.Lock()
         self._cv = threading.Condition()
 
-    def put(self, *tasks):
+    def put(self, tasks):
         '''Adds tasks to the queue. Thread-safe.'''
-        success = self._queue.put(*tasks)
+        success = self._queue.put(tasks)
         if success:
             with self._cv:
                 self._cv.notify()
@@ -74,7 +74,7 @@ class APITaskQueue(object):
 class PeekQueueThread(threading.Thread):
     '''Thread that occasionally checks if there is something in the queue.'''
 
-    def __init__(self, queue, notify_cv, sleep_duration=0.25):
+    def __init__(self, queue, notify_cv, sleep_duration=2):
         super().__init__()
         self._queue = queue
         self._notify_cv = notify_cv
@@ -82,10 +82,14 @@ class PeekQueueThread(threading.Thread):
 
     def run(self):
         while True:
-            if not self._queue.empty():
+            status = self._queue.can_get()
+            if status is True:
                 with self._notify_cv:
                     self._notify_cv.notify_all()
-            time.sleep(self._sleep_duration)
+            elif type(status) is int:
+                time.sleep(status)
+            else:
+                time.sleep(self._sleep_duration)
 
 
 class Task(object):
@@ -95,5 +99,9 @@ class Task(object):
         self._fn = fn
         self._kwargs = kwargs
 
-    def __call__(self, **new_kwargs):
-        self._fn(**{**new_kwargs, **self._kwargs})
+    def __call__(self, **kwargs):
+        self._fn(**{**kwargs, **self._kwargs})
+
+
+def make_task(f, **kwargs):
+    return Task(f, **kwargs)

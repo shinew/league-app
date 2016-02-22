@@ -1,10 +1,10 @@
-from lol.api import APITaskQueue, Task
+from lol.api import APITaskQueue, make_task
 import threading
 import time
 
 
-s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[(1, 1), (5, 10)],
-        num_threads=20)
+s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[(1, 1), (1, 2)], task_limit=20,
+        num_threads=5)
 
 class Counter(object):
     def __init__(self):
@@ -13,14 +13,15 @@ class Counter(object):
 
 g = Counter()
 
+@make_task
 def f(key=''):
     print('I was passed an API key {}'.format(key))
     print('Called from {:d} at {:.0f}'.format(threading.get_ident(), time.time()))
     with g.lock:
         g.counter += 1
-        print('Counter={:d}'.format(g.counter))
+        print('Counter=', g.counter)
     time.sleep(2)
-    s.put(Task(f))
+    print('We put', s.put([f, f, f]), 'tasks.')
 
-[s.put(Task(f)) for _ in range(40)]
+s.put([f for _ in range(20)])
 s.start()

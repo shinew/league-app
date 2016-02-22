@@ -28,26 +28,37 @@ class TaskQueue(object):
         self._rate_counters = RateCounterPool(rate_limits)
         self._lock = threading.Lock()
 
-    def put(self, *tasks):
-        '''Adds tasks to the queue. If the queue cannot fit all the tasks, none
-        of the tasks will be added, returns False. Else returns True.
+    def put(self, tasks):
+        '''Adds as many tasks as possible to the queue, and returns the number
+        of tasks added.
         Thread-safe.
         '''
         with self._lock:
-            if self._task_limit and len(self._queue) + len(tasks) > self._task_limit:
-                return False
-            else:
+            if not self._task_limit:
                 self._queue.extend(tasks)
-                return True
+                return len(tasks)
+            else:
+                truncated = tasks[:self._task_limit - len(self._queue)]
+                self._queue.extend(truncated)
+                return len(truncated)
 
-    def empty(self):
-        '''Returns True iff no task is available.'''
+    def can_get(self):
+        '''Returns:
+            - True iff a task is available right now.
+            - False iff the queue is empty.
+            - An integer indicating the time until the task is ready if there is
+                something in the queue.
+            - None if the time until the task is ready is unknown.
+        '''
+
         with self._lock:
             now = math.ceil(time.time())
             if self._rate_counters.can_add(now) and len(self._queue) > 0:
+                return True
+            elif len(self._queue) == 0:
                 return False
             else:
-                return True
+                return self._rate_counters.time_until_ready(now)
 
     def get(self):
         '''Returns a task iff the caller can execute the task given the time
@@ -75,8 +86,14 @@ class RateCounterPool(object):
         return '\t'.join(x.__repr__() for x in self._rate_counters)
 
     def can_add(self, now):
-        '''Returns true iff a task can be run given the rate limit.'''
+        '''Returns True iff a task can be run given the rate limit.'''
         return all(x.can_add(now) for x in self._rate_counters)
+
+    def time_until_ready(self, now):
+        '''Returns the time until a task will be ready, in seconds. Returns None
+        if uninitialized.
+        '''
+        return max(x.time_until_ready(now) for x in self._rate_counters)
 
     def increment(self, now):
         '''Automatically starts the timer, and adds 1 to the counters.'''
@@ -102,6 +119,14 @@ class RateCounter(object):
         '''Returns true iff a task can be run given the rate limit.'''
         self._maybe_reset(now)
         return self._count < self._limit
+
+    def time_until_ready(self, now):
+        '''Returns the time until a task will be ready, in seconds. Returns None
+        if uninitialized.'''
+        self._maybe_reset(now)
+        if self._start is None:
+            return None
+        return now - self._start + self._interval
 
     def increment(self, now):
         '''Automatically starts the timer, and adds 1 to the counter.'''
