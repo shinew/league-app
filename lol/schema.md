@@ -1,27 +1,28 @@
 # Schema
 
-## game
+## player_stats
 A player's perspective on a match he has played in.
 
-| name                     | type  |
-| ---                      | ---   |
-| match_id (key1, fkey)    | int   |
-| summoner_id (key2, fkey) | int   |
-| champion_id              | int   |
-| won                      | bool  |
-| kills                    | int   |
-| deaths                   | int   |
-| assists                  | int   |
-| cs                       | int   |
-| gold_earned              | int   |
+| name                     | type |
+| ---                      | ---  |
+| match_id (key1, fkey)    | int  |
+| summoner_id (key2, fkey) | int  |
+| champion_id              | int  |
+| won                      | bool |
+| kills                    | int  |
+| deaths                   | int  |
+| assists                  | int  |
+| damage_dealt             | int  |
+| damage_taken             | int  |
+| cs                       | int  |
+| gold_earned              | int  |
 
 ## match
 A match's player-agnostic data.
 
 | name                    | type |
 | ---                     | ---  |
-| mode_division_id (key1) | int  |
-| match_id (key2)         | int  |
+| match_id (key1)         | int  |
 | creation_time           | int  |
 | duration                | int  |
 | red_won                 | bool |
@@ -49,11 +50,11 @@ A match's player-agnostic data.
 
 ## champion
 
-| name                                | type |
-| ---                                 | ---  |
-| summoner_id (key1, fkey - summoner) | int  |
-| champion_id (key2)                  | int  |
-| games_played                        | int  |
+| name                     | type |
+| ---                      | ---  |
+| summoner_id (key1, fkey) | int  |
+| champion_id (key2)       | int  |
+| games_played             | int  |
 
 # Queries
 

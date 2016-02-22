@@ -7,6 +7,8 @@ import enum
 import logging
 import requests
 
+from lol.model import region_type
+
 
 _logger = logging.getLogger()
 
@@ -51,4 +53,9 @@ class MatchesOfSummonerRequest(RiotRequest):
 
     @classmethod
     def get(cls, key, summoner_id):
-        return super().get(key, region='na', summoner_id=summoner_id)
+        return super().get(key, region=region_type.na.value,
+                summoner_id=summoner_id)
+
+    @classmethod
+    def parse(cls, json):
+        pass

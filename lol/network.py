@@ -15,30 +15,28 @@ class TaskQueue(object):
     Provides rate limiting conservatively rounded to the second.
     '''
 
-    def __init__(self, rate_limits=[], task_limit=None):
+    def __init__(self, rate_limits=[], queue_limit=None):
         '''Args:
             rate_limits: a list of (num_requests, num_seconds), where we can
                 send a max of num_requests within num_seconds. Default to no
                 rate limit.
-            task_limit: maximum number of tasks we should enqueue. Default to
-                unlimited.
+            queue_limit: maximum size of a queue. Default to unlimited.
         '''
         self._queue = collections.deque()
-        self._task_limit = task_limit
+        self._queue_limit = queue_limit
         self._rate_counters = RateCounterPool(rate_limits)
         self._lock = threading.Lock()
 
     def put(self, tasks):
         '''Adds as many tasks as possible to the queue, and returns the number
-        of tasks added.
-        Thread-safe.
+        of tasks added. Thread-safe.
         '''
         with self._lock:
-            if not self._task_limit:
+            if self._queue_limit is None:
                 self._queue.extend(tasks)
                 return len(tasks)
             else:
-                truncated = tasks[:self._task_limit - len(self._queue)]
+                truncated = tasks[:self._queue_limit - len(self._queue)]
                 self._queue.extend(truncated)
                 return len(truncated)
 
@@ -49,6 +47,7 @@ class TaskQueue(object):
             - An integer indicating the time until the task is ready if there is
                 something in the queue.
             - None if the time until the task is ready is unknown.
+        Thread-safe.
         '''
 
         with self._lock:
@@ -77,7 +76,7 @@ class RateCounterPool(object):
     '''
 
     def __init__(self, rate_limits):
-        assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) \
+        assert all((len(x) == 2 and x[0] > 0 and x[1] > 0)
                 for x in rate_limits), \
                 'rate limits must be of type (num_requests, num_seconds).'
         self._rate_counters = [RateCounter(x[0], x[1]) for x in rate_limits]
@@ -165,6 +164,6 @@ class FunctionalThreadPool(object):
             return g
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self._num_threads) as executor:
-            futures = [executor.submit(run_forever(self._fn)) \
+            futures = [executor.submit(run_forever(self._fn))
                     for _ in range(self._num_threads)]
             concurrent.futures.as_completed(futures)

@@ -12,14 +12,14 @@ from lol.network import TaskQueue, FunctionalThreadPool
 class APITaskQueue(object):
     '''Rate-limited multi-threaded API task queue.'''
 
-    def __init__(self, api_keys=[], rate_limits=[], task_limit=None,
+    def __init__(self, api_keys=[], rate_limits=[], queue_limit=None,
             num_threads=1):
         '''Args:
             api_keys: if this is set, a key will be passed onto the task as a
                 param.
             rate_limits: a list of (num_requests, num_seconds), where we can
                 send a max of num_requests within num_seconds for each key.
-            task_limit: maximum number of tasks we should enqueue. Default to
+            queue_limit: maximum number of tasks we should enqueue. Default to
                 unlimited.
             num_threads: number of threads to use. Default to 1.
         '''
@@ -32,7 +32,7 @@ class APITaskQueue(object):
                 rate_limits[i] = (rate_limits[i][0] * len(api_keys),
                         rate_limits[i][1])
 
-        self._queue = TaskQueue(rate_limits=rate_limits, task_limit=task_limit)
+        self._queue = TaskQueue(rate_limits=rate_limits, queue_limit=queue_limit)
         self._thread_pool = FunctionalThreadPool(self._check_and_run, num_threads=num_threads)
 
         self._api_keys = api_keys
@@ -44,11 +44,7 @@ class APITaskQueue(object):
 
     def put(self, tasks):
         '''Adds tasks to the queue. Thread-safe.'''
-        success = self._queue.put(tasks)
-        if success:
-            with self._cv:
-                self._cv.notify()
-        return success
+        return self._queue.put(tasks)
 
     def start(self):
         '''Activates the scheduler. Queue should be seeded before running this.
