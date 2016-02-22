@@ -3,8 +3,8 @@ import threading
 import time
 
 
-s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[(2,1)],
-        num_threads=40)
+s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[],
+        num_threads=50)
 
 class Counter(object):
     def __init__(self):
