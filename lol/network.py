@@ -3,15 +3,11 @@ __doc__ = '''Multithreaded and thread-safe components.
 '''
 
 
+import collections
 import concurrent.futures
-import logging
 import math
-import queue
 import threading
 import time
-
-
-_logger = logging.getLogger()
 
 
 class TaskQueue(object):
@@ -19,7 +15,7 @@ class TaskQueue(object):
     Provides rate limiting conservatively rounded to the second.
     '''
 
-    def __init__(self, rate_limits=[], task_limit=0):
+    def __init__(self, rate_limits=[], task_limit=None):
         '''Args:
             rate_limits: a list of (num_requests, num_seconds), where we can
                 send a max of num_requests within num_seconds. Default to no
@@ -27,51 +23,42 @@ class TaskQueue(object):
             task_limit: maximum number of tasks we should enqueue. Default to
                 unlimited.
         '''
-        self._queue = queue.Queue(maxsize=task_limit)
-        self._rate_counters_lock = threading.Lock()
+        self._queue = collections.deque()
+        self._task_limit = task_limit
         self._rate_counters = RateCounterPool(rate_limits)
+        self._lock = threading.Lock()
 
-    def put(self, task):
-        '''Adds an async task to the queue. If full, returns False, else returns
-        True. Thread-safe.
+    def put(self, *tasks):
+        '''Adds tasks to the queue. If the queue cannot fit all the tasks, none
+        of the tasks will be added, returns False. Else returns True.
+        Thread-safe.
         '''
-        try:
-            self._queue.put_nowait(task)
-        except queue.Full:
-            _logger.warning('Failed to add task %s to the full task queue.',
-                    task)
-            return False
-        else:
-            return True
-
-    def can_get(self):
-        '''Returns True iff a task is available to get.'''
-        with self._rate_counters_lock:
-            now = math.ceil(time.time())
-            if self._rate_counters.can_add(now) and not self._queue.empty():
-                return True
-            else:
+        with self._lock:
+            if self._task_limit and len(self._queue) + len(tasks) > self._task_limit:
                 return False
+            else:
+                self._queue.extend(tasks)
+                return True
+
+    def empty(self):
+        '''Returns True iff no task is available.'''
+        with self._lock:
+            now = math.ceil(time.time())
+            if self._rate_counters.can_add(now) and len(self._queue) > 0:
+                return False
+            else:
+                return True
 
     def get(self):
         '''Returns a task iff the caller can execute the task given the time
         limit, else returns None. Thread-safe.
         '''
-        with self._rate_counters_lock:
+        with self._lock:
             now = math.ceil(time.time())
-            if self._rate_counters.can_add(now):
-                task = None
-                try:
-                    task = self._queue.get_nowait()
-                except queue.Empty:
-                    return
-                else:
-                    self._rate_counters.increment(now)
-                    return task
-
-    def task_done(self):
-        '''Indicates a previously gotten task has completed.'''
-        self._queue.task_done()
+            if self._rate_counters.can_add(now) and len(self._queue) > 0:
+                self._rate_counters.increment(now)
+                task = self._queue.popleft()
+                return task
 
 
 class RateCounterPool(object):
@@ -134,14 +121,14 @@ class FunctionalThreadPool(object):
     threads.
     '''
 
-    def __init__(self, func, num_threads=1):
+    def __init__(self, fn, num_threads=1):
         '''Args:
             num_threads: number of threads to use. Default to 1.
         '''
         assert num_threads > 0, \
                 'Must have at least 1 thread for the Scheduler to run.'
-        assert callable(func), 'func must be callable.'
-        self._func = func
+        assert callable(fn), 'function must be callable.'
+        self._fn = fn
         self._num_threads = num_threads
 
     def start(self):
@@ -153,6 +140,6 @@ class FunctionalThreadPool(object):
             return g
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self._num_threads) as executor:
-            futures = [executor.submit(run_forever(self._func)) \
+            futures = [executor.submit(run_forever(self._fn)) \
                     for _ in range(self._num_threads)]
             concurrent.futures.as_completed(futures)

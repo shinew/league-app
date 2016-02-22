@@ -9,9 +9,9 @@ import time
 
 
 class APITaskQueue(object):
-    '''Rate-limited multi-threaded task queue.'''
+    '''Rate-limited multi-threaded API task queue.'''
 
-    def __init__(self, api_keys=[], rate_limits=[], task_limit=0,
+    def __init__(self, api_keys=[], rate_limits=[], task_limit=None,
             num_threads=1):
         '''Args:
             api_keys: if this is set, a key will be passed onto the task as a
@@ -43,9 +43,9 @@ class APITaskQueue(object):
             self._key_lock = threading.Lock()
         self._cv = threading.Condition()
 
-    def put(self, task):
-        '''Adds a task to the queue. Thread-safe.'''
-        success = self._queue.put(task)
+    def put(self, *tasks):
+        '''Adds tasks to the queue. Thread-safe.'''
+        success = self._queue.put(*tasks)
         if success:
             with self._cv:
                 self._cv.notify()
@@ -61,21 +61,19 @@ class APITaskQueue(object):
         task = None
         with self._cv:
             task = self._cv.wait_for(self._queue.get)
-        (fn, kwargs) = task
-        assert callable(fn), 'Task function must be callable.'
         if self._need_key:
             key = None
             with self._key_lock:
                 key = self._api_keys[self._key_counter]
                 self._key_counter = (self._key_counter + 1) % len(self._api_keys)
-            fn(key=key, **kwargs)
+            task(key=key)
         else:
-            fn()
-        self._queue.task_done()
+            task()
 
 
 class PeekQueueThread(threading.Thread):
     '''Thread that occasionally checks if there is something in the queue.'''
+
     def __init__(self, queue, notify_cv, sleep_duration=0.25):
         super().__init__()
         self._queue = queue
@@ -84,11 +82,18 @@ class PeekQueueThread(threading.Thread):
 
     def run(self):
         while True:
-            if self._queue.can_get():
+            if not self._queue.empty():
                 with self._notify_cv:
                     self._notify_cv.notify_all()
             time.sleep(self._sleep_duration)
 
 
-def create_task(f, **kwargs):
-    return (f, kwargs)
+class Task(object):
+    '''A task that can be called.'''
+
+    def __init__(self, fn, **kwargs):
+        self._fn = fn
+        self._kwargs = kwargs
+
+    def __call__(self, **new_kwargs):
+        self._fn(**{**new_kwargs, **self._kwargs})

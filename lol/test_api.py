@@ -1,10 +1,10 @@
-from lol.api import APITaskQueue, create_task
+from lol.api import APITaskQueue, Task
 import threading
 import time
 
 
-s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[],
-        num_threads=50)
+s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[(1, 1), (5, 10)],
+        num_threads=20)
 
 class Counter(object):
     def __init__(self):
@@ -19,8 +19,8 @@ def f(key=''):
     with g.lock:
         g.counter += 1
         print('Counter={:d}'.format(g.counter))
-    time.sleep(1)
-    s.put(create_task(f))
+    time.sleep(2)
+    s.put(Task(f))
 
-[s.put(create_task(f)) for _ in range(40)]
+[s.put(Task(f)) for _ in range(40)]
 s.start()
