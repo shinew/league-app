@@ -93,7 +93,7 @@ class PeekQueueThread(threading.Thread):
 
 
 class Task(object):
-    '''A task that can be called.'''
+    '''A task that can capture a context, and be called.'''
 
     def __init__(self, fn, **kwargs):
         self._fn = fn

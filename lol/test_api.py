@@ -20,8 +20,8 @@ def f(key=''):
     with g.lock:
         g.counter += 1
         print('Counter=', g.counter)
-    time.sleep(2)
-    print('We put', s.put([f, f, f]), 'tasks.')
+    time.sleep(1)
+    print('We put', s.put([f, f]), 'tasks.')
 
 s.put([f for _ in range(20)])
 s.start()
