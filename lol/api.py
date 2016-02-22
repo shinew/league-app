@@ -80,7 +80,6 @@ class PeekQueueThread(threading.Thread):
         '''Override.'''
         while True:
             status = self._queue.status()
-            print('STATUS', status)
             if status[0] is queue_status.available:
                 with self._notify_cv:
                     self._notify_cv.notify_all()
