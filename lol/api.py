@@ -6,7 +6,7 @@ __doc__ = '''Interface for rate-limited API tasks.
 import threading
 import time
 
-from lol.network import TaskQueue, FunctionalThreadPool
+from lol.network import queue_status, TaskQueue, FunctionalThreadPool
 
 
 class APITaskQueue(object):
@@ -33,7 +33,8 @@ class APITaskQueue(object):
                         rate_limits[i][1])
 
         self._queue = TaskQueue(rate_limits=rate_limits, queue_limit=queue_limit)
-        self._thread_pool = FunctionalThreadPool(self._check_and_run, num_threads=num_threads)
+        self._thread_pool = FunctionalThreadPool(self._check_and_run,
+                num_threads=num_threads)
 
         self._api_keys = api_keys
         self._need_key = len(api_keys) > 0
@@ -69,20 +70,23 @@ class APITaskQueue(object):
 class PeekQueueThread(threading.Thread):
     '''Thread that occasionally checks if there is something in the queue.'''
 
-    def __init__(self, queue, notify_cv, sleep_duration=2):
+    def __init__(self, queue, notify_cv, sleep_duration=0.5):
         super().__init__()
         self._queue = queue
         self._notify_cv = notify_cv
         self._sleep_duration = sleep_duration
 
     def run(self):
+        '''Override.'''
         while True:
-            status = self._queue.can_get()
-            if status is True:
+            status = self._queue.status()
+            print('STATUS', status)
+            if status[0] is queue_status.available:
                 with self._notify_cv:
                     self._notify_cv.notify_all()
-            elif type(status) is int:
-                time.sleep(status)
+                time.sleep(self._sleep_duration)
+            elif status[0] is queue_status.unavailable:
+                time.sleep(status[1])
             else:
                 time.sleep(self._sleep_duration)
 

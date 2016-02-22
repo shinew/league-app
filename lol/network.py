@@ -5,9 +5,18 @@ __doc__ = '''Multithreaded and thread-safe components.
 
 import collections
 import concurrent.futures
+import enum
 import math
 import threading
 import time
+
+
+@enum.unique
+class queue_status(enum.IntEnum):
+    available = 1
+    unavailable = 2
+    empty = 3
+    not_started = 4
 
 
 class TaskQueue(object):
@@ -40,24 +49,22 @@ class TaskQueue(object):
                 self._queue.extend(truncated)
                 return len(truncated)
 
-    def can_get(self):
-        '''Returns:
-            - True iff a task is available right now.
-            - False iff the queue is empty.
-            - An integer indicating the time until the task is ready if there is
-                something in the queue.
-            - None if the time until the task is ready is unknown.
-        Thread-safe.
+    def status(self):
+        '''Returns the status of the queue as the first element. Possibly returns
+        the time until a task is available as the second element. Thread-safe.
         '''
-
         with self._lock:
             now = math.ceil(time.time())
             if self._rate_counters.can_add(now) and len(self._queue) > 0:
-                return True
+                return (queue_status.available,)
             elif len(self._queue) == 0:
-                return False
+                return (queue_status.empty,)
             else:
-                return self._rate_counters.time_until_ready(now)
+                ttl = self._rate_counters.time_until_ready(now)
+                if ttl is None:
+                    return (queue_status.not_started,)
+                else:
+                    return (queue_status.unavailable, ttl)
 
     def get(self):
         '''Returns a task iff the caller can execute the task given the time
@@ -72,7 +79,7 @@ class TaskQueue(object):
 
 
 class RateCounterPool(object):
-    '''A collection of rate counters. Not thread-safe.
+    '''Keeps track of a set of rate limits. Not thread-safe.
     '''
 
     def __init__(self, rate_limits):
@@ -92,7 +99,8 @@ class RateCounterPool(object):
         '''Returns the time until a task will be ready, in seconds. Returns None
         if uninitialized.
         '''
-        return max(x.time_until_ready(now) for x in self._rate_counters)
+        ready = max(x.time_until_ready(now) for x in self._rate_counters)
+        return ready if ready > 0 else None
 
     def increment(self, now):
         '''Automatically starts the timer, and adds 1 to the counters.'''
@@ -101,7 +109,7 @@ class RateCounterPool(object):
 
 
 class RateCounter(object):
-    '''A dummy for storing rate counts. Not thread-safe.'''
+    '''Keeps track of one rate limit. Not thread-safe.'''
 
     def __init__(self, limit, interval, count=0):
         self._limit = limit
@@ -115,20 +123,21 @@ class RateCounter(object):
                         self._limit)
 
     def can_add(self, now):
-        '''Returns true iff a task can be run given the rate limit.'''
+        '''Returns True iff a task can be run given the rate limit.'''
         self._maybe_reset(now)
         return self._count < self._limit
 
     def time_until_ready(self, now):
-        '''Returns the time until a task will be ready, in seconds. Returns None
-        if uninitialized.'''
+        '''Returns the time until a task is ready, in seconds. Returns None if
+        uninitialized.'''
         self._maybe_reset(now)
-        if self._start is None:
-            return None
-        return now - self._start + self._interval
+        if self._start is None or self._count < self._limit:
+            return -1
+        return self._interval - (now - self._start)
 
     def increment(self, now):
-        '''Automatically starts the timer, and adds 1 to the counter.'''
+        '''Automatically starts the timer, and assumes a task will be run soon.
+        '''
         if self._start is None:
             self._start = now
         self._maybe_reset(now)

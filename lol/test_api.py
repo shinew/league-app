@@ -3,8 +3,8 @@ import threading
 import time
 
 
-s = APITaskQueue(api_keys=['shine', 'xian', 'wang'], rate_limits=[(1, 1), (1, 2)],
-        queue_limit=20, num_threads=5)
+s = APITaskQueue(api_keys=['shine', 'simon', 'bryan', 'shine2', 'shine3', 'shine4'],
+        rate_limits=[(10, 10), (500, 10*60)], queue_limit=1000, num_threads=50)
 
 class Counter(object):
     def __init__(self):
@@ -15,13 +15,13 @@ g = Counter()
 
 @make_task
 def f(key=''):
-    print('I was passed an API key {}'.format(key))
-    print('Called from {:d} at {:.0f}'.format(threading.get_ident(), time.time()))
+#    print('Called from {:d} at {:.0f}'.format(threading.get_ident(), time.time()))
     with g.lock:
         g.counter += 1
         print('Counter=', g.counter)
-    time.sleep(1)
+    time.sleep(2)
+    print('I was passed an API key {}'.format(key))
     print('We put', s.put([f, f]), 'tasks.')
 
-s.put([f for _ in range(20)])
+s.put([f for _ in range(50)])
 s.start()
