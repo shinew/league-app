@@ -31,12 +31,12 @@ class Match(object):
     '''Represents a match.'''
 
     def __init__(self, match_id, duration=0, creation_time=0, red_won = False,
-            player_stats=[], red_team_stats=None, blue_team_stats=None):
+            players_stats=[], red_team_stats=None, blue_team_stats=None):
         self.match_id = match_id
         self.duration = duration
         self.creation_time = creation_time
         self.red_won = red_won
-        self.player_stats = player_stats
+        self.players_stats = player_stats
         self.red_team_stats = red_team_stats
         self.blue_team_stats = blue_team_stats
 
@@ -54,7 +54,7 @@ class Stats(object):
 
 
 class PlayerStats(Stats):
-    '''Represents one summoner's perspective of a match.'''
+    '''Represents a summoner's perspective of a match.'''
 
     def __init__(self, summoner_id, champion_id=0, won=False, **kwargs):
         super().__init__(**kwargs)
@@ -68,3 +68,20 @@ class TeamStats(Stats):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class Summoner(object):
+    '''Represents a summoner.'''
+
+    def __init__(self, summoner_id, division_id=0):
+        self.summoner_id = summoner_id
+        self.division_id = division_id
+
+
+class Champion(object):
+    '''Represents a summoner's champion.'''
+
+    def __init__(self, summoner_id, champion_id, games_played=0):
+        self.summoner_id = summoner_id
+        self.champion_id = champion_id
+        self.games_played = games_played
