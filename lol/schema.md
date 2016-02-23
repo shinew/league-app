@@ -46,7 +46,7 @@ A match's player-agnostic data.
 | name               | type |
 | ---                | ---  |
 | summoner_id (key1) | int  |
-| division_id        | int  |
+| tier_id            | int  |
 
 ## champion
 
@@ -62,43 +62,43 @@ A match's player-agnostic data.
 
 No filter: SELECT SUM(games_played) FROM champion / SELECT COUNT(\*) FROM summoner
 
-By division:
+By tier:
 
 SELECT SUM(champion.games_played)
 FROM summoner INNER JOIN champion
 ON summoner.summoner_id = champion.summoner_id
-GROUP BY summoner.division_id
-WHERE summoner.division_id = %s /
+GROUP BY summoner.tier_id
+WHERE summoner.tier_id = %s /
 
 SELECT COUNT(\*)
 FROM summoner
-GROUP BY division_id
-WHERE division_id = %s
+GROUP BY tier_id
+WHERE tier_id = %s
 
 ## Win rate
 
-(for division & champion)
+(for tier & champion)
 
 SELECT COUNT(\*)
 FROM game
-WHERE champion_id = %s [AND division_id = %s] AND won = TRUE /
+WHERE champion_id = %s [AND tier_id = %s] AND won = TRUE /
 
 SELECT COUNT(\*)
 FROM game
-GROUP BY champion_id, division_id
-WHERE champion_id = %s AND division_id = %s
+GROUP BY champion_id, tier_id
+WHERE champion_id = %s AND tier_id = %s
 
 ## Gold earned
 
-(for division & champion)
+(for tier & champion)
 
 SELECT AVERAGE(gold_earned)
 FROM game
-WHERE [AND champion_id = %s] [AND division_id = %s]
+WHERE [AND champion_id = %s] [AND tier_id = %s]
 
 ## Kill contribution
 
-(for division & champion)
+(for tier & champion)
 
 SELECT AVERAGE(
     CASE WHEN game.won = match.red_won
@@ -106,5 +106,5 @@ SELECT AVERAGE(
         DEFAULT THEN kills/match.blue_team_kills
 )
 FROM game
-GROUP BY champion_id, division_id
-WHERE champion_id = %s AND division_id = %s
+GROUP BY champion_id, tier_id
+WHERE champion_id = %s AND tier_id = %s

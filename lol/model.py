@@ -6,31 +6,43 @@ __doc__ = '''Contains data structures of basic game entities.
 import enum
 
 
-@enum.unique
-class queue_type(enum.Enum):
-    ranked_solo = 'RANKED_SOLO_5x5'
-    team_builder_draft = 'TEAM_BUILDER_DRAFT_RANKED_5x5'
-    ranked_threes = 'RANKED_TEAM_3x3'
-    ranked_fives = 'RANKED_TEAM_5x5'
+current_season = 'SEASON2016'
+ranked_solo    = 'RANKED_SOLO_5x5'
+current_region = 'na'
 
 
 @enum.unique
-class season_type(enum.Enum):
-    season2016 = 'SEASON2016'
-    preseason2016 = 'PRESEASON2016'
+class tier(enum.IntEnum):
+    bronze     = 1
+    silver     = 2
+    gold       = 3
+    platinum   = 4
+    diamond    = 5
+    master     = 6
+    challenger = 7
 
 
-@enum.unique
-class region_type(enum.Enum):
-    na = 'na'
-    kr = 'kr'
-    euw = 'euw'
+def get_tier_id(name):
+    '''Given a tier's name, returns its id.'''
+    assert name in _map_tier_id, '{} is an invalid tier name'.format(name)
+    return _map_tier_id[name]
+
+
+_map_tier_id = {
+    'BRONZE'     : tier.bronze,
+    'SILVER'     : tier.silver,
+    'GOLD'       : tier.gold,
+    'PLATINUM'   : tier.platinum,
+    'DIAMOND'    : tier.diamond,
+    'MASTER'     : tier.master,
+    'CHALLENGER' : tier.challenger,
+}
 
 
 class Match(object):
     '''Represents a match.'''
 
-    def __init__(self, match_id, duration=0, creation_time=0, red_won = False,
+    def __init__(self, match_id, duration=0, creation_time=0, red_won=False,
             players_stats=[], red_team_stats=None, blue_team_stats=None):
         self.match_id = match_id
         self.duration = duration
@@ -73,9 +85,9 @@ class TeamStats(Stats):
 class Summoner(object):
     '''Represents a summoner.'''
 
-    def __init__(self, summoner_id, division_id=0):
+    def __init__(self, summoner_id, tier_id=0):
         self.summoner_id = summoner_id
-        self.division_id = division_id
+        self.tier_id = tier_id
 
 
 class Champion(object):
