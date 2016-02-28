@@ -30,14 +30,12 @@ class RiotRequest(object):
     def get(cls, key, **kwargs):
         '''Calls the Riot API and processes result.'''
         constructed_url = cls.base_url + cls.path.format(**kwargs)
-        result = requests.get(constructed_url, params={'api_key': key})
-        if result.status_code == status.ok:
-            try:
+        try:
+            result = requests.get(constructed_url, params={'api_key': key})
+            if result.status_code == status.ok:
                 return cls._parse(result.json(), **kwargs)
-            except:
-                logging.warning('%s', sys.exc_info())
-                logging.warning('Failed to parse JSON of request %s',
-                        constructed_url)
+        except:
+            logging.warning('%s', sys.exc_info())
         else:
             logging.warning('Failed request %s with status code %s',
                     constructed_url, result.status_code)
