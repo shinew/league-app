@@ -1,4 +1,5 @@
-from lol.network import APITaskQueue, make_task
+from lol.network import APITaskQueue
+from lol.task import create_task
 import threading
 import time
 
@@ -13,7 +14,7 @@ class Counter(object):
 
 g = Counter()
 
-@make_task
+@create_task
 def f(key=''):
     print('Called from {:d} at {:.0f}'.format(threading.get_ident(), time.time()))
     with g.lock:
@@ -21,7 +22,7 @@ def f(key=''):
         print('Counter=', g.counter)
     time.sleep(2)
 #    print('I was passed an API key {}'.format(key))
-    s.put([f, f])
+    s.put([f(), f()])
 
-s.put([f for _ in range(60)])
+s.put([f() for _ in range(60)])
 s.start()

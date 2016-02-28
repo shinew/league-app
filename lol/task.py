@@ -3,6 +3,7 @@ ___doc___ = '''Tasks for the API.
 '''
 
 
+import logging
 import lol.api as api
 import lol.db as db
 import lol.model as model
@@ -27,10 +28,9 @@ def add_match_list(summoner_id, key=''):
     if match_list is None:
         return False
 
+    logging.info('Adding match list for %s', summoner_id)
     summoner_champions = _get_summoner_champions(match_list, summoner_id)
     db.add_summoner_champions(summoner_champions)
-
-    queue.add_task(add_summoner_tier(summoner_id))
 
     match_ids = [x.match_id for x in match_list \
             if not db.has_match_id(x.match_id)]
@@ -44,6 +44,7 @@ def add_summoner_tier(summoner_id, key=''):
     if tier is None:
         return False
 
+    logging.info('Adding summoner tier for %s', summoner_id)
     summoner = model.Summoner(summoner_id, tier)
     db.add_summoner(summoner)
     return True
@@ -58,11 +59,14 @@ def add_match_info(match_id, key=''):
     if match is None:
         return False
 
+    logging.info('Adding match info for %s', match_id)
     db.add_match(match)
 
     summoner_ids = [x.summoner_id for x in match.players_stats \
             if not db.has_summoner_id(x.summoner_id)]
-    queue.add_tasks([add_match_list(x) for x in summoner_ids])
+    match_list_tasks = [add_match_list(x) for x in summoner_ids]
+    tier_tasks = [add_summoner_tier(x) for x in summoner_ids]
+    queue.add_tasks([t for ts in zip(match_list_tasks, tier_tasks) for t in ts])
     return True
 
 

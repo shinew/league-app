@@ -20,4 +20,4 @@ def start():
 
 
 _riot_queue = network.APITaskQueue(api_keys=config.API_KEYS,
-        rate_limits=[(10, 10), (500, 10*60)], queue_limit=1000, num_threads=30)
+        rate_limits=[(5, 10), (250, 10*60)], queue_limit=1000, num_threads=30)
