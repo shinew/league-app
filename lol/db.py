@@ -18,3 +18,11 @@ def add_summoner(summoner):
 def add_summoner_champions(champions):
     assert all(type(x) is model.Champion for x in champions), \
             'expected Champion objects.'
+
+
+def has_summoner_id(summoner_id):
+    return False
+
+
+def has_match_id(match_id):
+    return False

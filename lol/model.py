@@ -99,7 +99,7 @@ class Summoner(object):
 class Champion(object):
     '''Represents a summoner's champion.'''
 
-    def __init__(self, summoner_id, champion_id):
+    def __init__(self, summoner_id, champion_id, games_played):
         self.summoner_id = summoner_id
         self.champion_id = champion_id
         self.games_played = games_played
