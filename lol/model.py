@@ -24,6 +24,12 @@ class tier(enum.IntEnum):
     challenger = 7
 
 
+def get_tier_id(name):
+    '''Given a tier's name, returns its id.'''
+    assert name in _map_tier_id, '{} is an invalid tier name'.format(name)
+    return _map_tier_id[name]
+
+
 _map_tier_id = {
     'BRONZE'     : tier.bronze,
     'SILVER'     : tier.silver,
@@ -33,12 +39,6 @@ _map_tier_id = {
     'MASTER'     : tier.master,
     'CHALLENGER' : tier.challenger,
 }
-
-
-def get_tier_id(name):
-    '''Given a tier's name, returns its id.'''
-    assert name in _map_tier_id, '{} is an invalid tier name'.format(name)
-    return _map_tier_id[name]
 
 
 match_champion = namedtuple('MatchChampion', ['match_id', 'champion_id'])
@@ -99,7 +99,7 @@ class Summoner(object):
 class Champion(object):
     '''Represents a summoner's champion.'''
 
-    def __init__(self, summoner_id, champion_id, games_played=0):
+    def __init__(self, summoner_id, champion_id):
         self.summoner_id = summoner_id
         self.champion_id = champion_id
         self.games_played = games_played

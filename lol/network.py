@@ -100,20 +100,6 @@ class PeekQueueThread(threading.Thread):
                 time.sleep(self._sleep_duration)
 
 
-class Task(object):
-    '''A task that can capture a context, and be called.'''
-
-    def __init__(self, fn, **kwargs):
-        self._fn = fn
-        self._kwargs = kwargs
-
-    def __call__(self, **kwargs):
-        self._fn(**{**kwargs, **self._kwargs})
-
-
-def make_task(f, **kwargs):
-    return Task(f, **kwargs)
-
 class TaskQueue(object):
     '''A generic thread-safe task queue that supports rate limits.
     Provides rate limiting conservatively rounded to the second.

@@ -15,7 +15,7 @@ A player's perspective on a match he has played in.
 | damage_dealt             | int  |
 | damage_taken             | int  |
 | cs                       | int  |
-| gold_earned              | int  |
+| gold                     | int  |
 
 ## match
 A match's player-agnostic data.
@@ -31,14 +31,14 @@ A match's player-agnostic data.
 | winning_team_damage_dealt | int  |
 | winning_team_damage_taken | int  |
 | winning_team_cs           | int  |
-| winning_team_gold_earned  | int  |
+| winning_team_gold         | int  |
 | losing_team_kills         | int  |
 | losing_team_deaths        | int  |
 | losing_team_assists       | int  |
 | losing_team_damage_dealt  | int  |
 | losing_team_damage_taken  | int  |
 | losing_team_cs            | int  |
-| losing_team_gold_earned   | int  |
+| losing_team_gold          | int  |
 
 ## summoner
 

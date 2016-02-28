@@ -48,7 +48,7 @@ class RiotRequest(object):
         return NotImplementedError
 
 
-class SummonerMatches(RiotRequest):
+class MatchList(RiotRequest):
     '''Returns all SoloqQ matches of a summoner in the current season.'''
 
     path = '/api/lol/{region}/v2.2/matchlist/by-summoner/{summoner_id:d}'
@@ -68,7 +68,7 @@ class SummonerMatches(RiotRequest):
         return matches
 
 
-class CurrentSummonerTier(RiotRequest):
+class SummonerTier(RiotRequest):
     '''Returns the current tier of a summoner.'''
 
     path = '/api/lol/{region}/v2.5/league/by-summoner/{summoner_id:d}'
@@ -85,7 +85,7 @@ class CurrentSummonerTier(RiotRequest):
                 return model.get_tier_id(j_league['tier'])
 
 
-class MatchData(RiotRequest):
+class MatchInfo(RiotRequest):
     '''Returns the complete data for a match.'''
 
     path = '/api/lol/{region}/v2.2/match/{match_id:d}'
