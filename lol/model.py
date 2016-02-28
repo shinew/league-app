@@ -5,6 +5,8 @@ __doc__ = '''Contains data structures of basic game entities.
 
 import enum
 
+from collections import namedtuple
+
 
 current_season = 'SEASON2016'
 ranked_solo    = 'RANKED_SOLO_5x5'
@@ -22,12 +24,6 @@ class tier(enum.IntEnum):
     challenger = 7
 
 
-def get_tier_id(name):
-    '''Given a tier's name, returns its id.'''
-    assert name in _map_tier_id, '{} is an invalid tier name'.format(name)
-    return _map_tier_id[name]
-
-
 _map_tier_id = {
     'BRONZE'     : tier.bronze,
     'SILVER'     : tier.silver,
@@ -39,40 +35,50 @@ _map_tier_id = {
 }
 
 
+def get_tier_id(name):
+    '''Given a tier's name, returns its id.'''
+    assert name in _map_tier_id, '{} is an invalid tier name'.format(name)
+    return _map_tier_id[name]
+
+
+match_champion = namedtuple('MatchChampion', ['match_id', 'champion_id'])
+
+
 class Match(object):
     '''Represents a match.'''
 
-    def __init__(self, match_id, duration=0, creation_time=0, red_won=False,
-            players_stats=[], red_team_stats=None, blue_team_stats=None):
+    def __init__(self, match_id, duration=0, creation_time=0,
+            players_stats=[], winning_team_stats=None, losing_team_stats=None):
         self.match_id = match_id
         self.duration = duration
         self.creation_time = creation_time
-        self.red_won = red_won
-        self.players_stats = player_stats
-        self.red_team_stats = red_team_stats
-        self.blue_team_stats = blue_team_stats
+        self.players_stats = players_stats
+        self.winning_team_stats = winning_team_stats
+        self.losing_team_stats = losing_team_stats
 
 
 class Stats(object):
     '''Represents an entity's perspective of a match.'''
 
     def __init__(self, kills=0, deaths=0, assists=0, damage_dealt=0,
-            damage_taken=0, cs=0, gold_earned=0):
+            damage_taken=0, cs=0, gold=0, won=False):
         self.kills = kills
         self.deaths = deaths
         self.assists = assists
+        self.damage_dealt = damage_dealt
+        self.damage_taken = damage_taken
         self.cs = cs
-        self.gold_earned = gold_earned
+        self.gold = gold
+        self.won = won
 
 
 class PlayerStats(Stats):
     '''Represents a summoner's perspective of a match.'''
 
-    def __init__(self, summoner_id, champion_id=0, won=False, **kwargs):
+    def __init__(self, summoner_id, champion_id=0, **kwargs):
         super().__init__(**kwargs)
         self.summoner_id = summoner_id
         self.champion_id = champion_id
-        self.won = won
 
 
 class TeamStats(Stats):

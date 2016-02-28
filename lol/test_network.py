@@ -1,4 +1,4 @@
-from lol.api import APITaskQueue, make_task
+from lol.network import APITaskQueue, make_task
 import threading
 import time
 

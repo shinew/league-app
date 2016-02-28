@@ -1,105 +1,138 @@
-__doc__ = '''Interface for rate-limited API tasks.
+__doc__ = '''Riot API calls.
 
 '''
 
 
-import threading
-import time
+import enum
+import logging
+import requests
+import sys
 
-from lol.network import queue_status, TaskQueue, FunctionalThreadPool
+import lol.model as model
 
 
-class APITaskQueue(object):
-    '''Rate-limited multi-threaded API task queue.'''
+class status(enum.IntEnum):
+    ok = 200
+    bad_request = 400
+    unauthorized = 401
+    forbidden = 403
+    rate_limit_exceeded = 429
+    server_error = 500
+    server_unavailable = 503
 
-    def __init__(self, api_keys=[], rate_limits=[], queue_limit=None,
-            num_threads=1):
-        '''Args:
-            api_keys: if this is set, a key will be passed onto the task as a
-                param.
-            rate_limits: a list of (num_requests, num_seconds), where we can
-                send a max of num_requests within num_seconds for each key.
-            queue_limit: maximum number of tasks we should enqueue. Default to
-                unlimited.
-            num_threads: number of threads to use. Default to 1.
-        '''
-        assert all((len(x) == 2 and x[0] > 0 and x[1] > 0) for x in rate_limits), \
-                'rate limits must be of type (num_requests, num_seconds).'
 
-        # Scale up the rate limits
-        if len(api_keys) > 1:
-            for i in range(len(rate_limits)):
-                rate_limits[i] = (rate_limits[i][0] * len(api_keys),
-                        rate_limits[i][1])
+class RiotRequest(object):
+    '''Base class for Riot API calls.'''
 
-        self._queue = TaskQueue(rate_limits=rate_limits, queue_limit=queue_limit)
-        self._thread_pool = FunctionalThreadPool(self._check_and_run,
-                num_threads=num_threads)
+    base_url = 'https://na.api.pvp.net'
 
-        self._api_keys = api_keys
-        self._need_key = len(api_keys) > 0
-        if self._need_key:
-            self._key_counter = 0
-            self._key_lock = threading.Lock()
-        self._cv = threading.Condition()
-
-    def put(self, tasks):
-        '''Adds tasks to the queue. Thread-safe.'''
-        return self._queue.put(tasks)
-
-    def start(self):
-        '''Activates the scheduler. Queue should be seeded before running this.
-        '''
-        PeekQueueThread(self._queue, self._cv).start()
-        self._thread_pool.start()
-
-    def _check_and_run(self):
-        task = None
-        with self._cv:
-            task = self._cv.wait_for(self._queue.get)
-        if self._need_key:
-            key = None
-            with self._key_lock:
-                key = self._api_keys[self._key_counter]
-                self._key_counter = (self._key_counter + 1) % len(self._api_keys)
-            task(key=key)
+    @classmethod
+    def get(cls, key, **kwargs):
+        '''Calls the Riot API and processes result.'''
+        constructed_url = cls.base_url + cls.path.format(**kwargs)
+        result = requests.get(constructed_url, params={'api_key': key})
+        if result.status_code == status.ok:
+            try:
+                return cls._parse(result.json(), **kwargs)
+            except:
+                logging.warning('%s', sys.exc_info())
+                logging.warning('Failed to parse JSON of request %s',
+                        constructed_url)
         else:
-            task()
+            logging.warning('Failed request %s with status code %s',
+                    constructed_url, result.status_code)
+
+    @classmethod
+    def _parse(cls, json, **kwargs):
+        '''Processes the JSON request result, if successful.'''
+        return NotImplementedError
 
 
-class PeekQueueThread(threading.Thread):
-    '''Thread that occasionally checks if there is something in the queue.'''
+class SummonerMatches(RiotRequest):
+    '''Returns all SoloqQ matches of a summoner in the current season.'''
 
-    def __init__(self, queue, notify_cv, sleep_duration=0.5):
-        super().__init__()
-        self._queue = queue
-        self._notify_cv = notify_cv
-        self._sleep_duration = sleep_duration
+    path = '/api/lol/{region}/v2.2/matchlist/by-summoner/{summoner_id:d}'
 
-    def run(self):
-        '''Override.'''
-        while True:
-            status = self._queue.status()
-            if status[0] is queue_status.available:
-                with self._notify_cv:
-                    self._notify_cv.notify_all()
-                time.sleep(self._sleep_duration)
-            elif status[0] is queue_status.unavailable:
-                time.sleep(status[1])
-            else:
-                time.sleep(self._sleep_duration)
+    @classmethod
+    def get(cls, key, summoner_id):
+        return super().get(key, region=model.current_region, summoner_id=summoner_id)
+
+    @classmethod
+    def _parse(cls, j_data, region='', summoner_id=0):
+        j_matches = j_data['matches']
+        matches = []
+        for j_match in j_matches:
+            if j_match['season'] == model.current_season \
+                    and j_match['queue'] == model.ranked_solo:
+                matches.append(model.match_champion(j_match['matchId'], j_match['champion']))
+        return matches
 
 
-class Task(object):
-    '''A task that can capture a context, and be called.'''
+class CurrentSummonerTier(RiotRequest):
+    '''Returns the current tier of a summoner.'''
 
-    def __init__(self, fn, **kwargs):
-        self._fn = fn
-        self._kwargs = kwargs
+    path = '/api/lol/{region}/v2.5/league/by-summoner/{summoner_id:d}'
 
-    def __call__(self, **kwargs):
-        self._fn(**{**kwargs, **self._kwargs})
+    @classmethod
+    def get(cls, key, summoner_id):
+        return super().get(key, region=model.current_region, summoner_id=summoner_id)
+
+    @classmethod
+    def _parse(cls, j_data, region='', summoner_id=0):
+        j_leagues = j_data[str(summoner_id)]
+        for j_league in j_leagues:
+            if j_league['queue'] == model.ranked_solo:
+                return model.get_tier_id(j_league['tier'])
 
 
-def make_task(f, **kwargs):
-    return Task(f, **kwargs)
+class MatchData(RiotRequest):
+    '''Returns the complete data for a match.'''
+
+    path = '/api/lol/{region}/v2.2/match/{match_id:d}'
+
+    @classmethod
+    def get(cls, key, match_id):
+        return super().get(key, region=model.current_region, match_id=match_id)
+
+    @classmethod
+    def _parse(cls, j_data, region='', match_id=0):
+        duration = j_data['matchDuration']
+        creation_time = j_data['matchCreation']
+
+        players = [cls._parse_player_stats(x,y) for (x,y) in \
+                zip(j_data['participants'], j_data['participantIdentities'])]
+        assert len(players) == 10, 'should have 10 players.'
+
+        winning_players = [x for x in players if x.won]
+        losing_players = [x for x in players if not x.won]
+        winning_team = cls._aggregate_team_stats(winning_players)
+        losing_team = cls._aggregate_team_stats(losing_players)
+
+        match = model.Match(match_id, duration=duration, creation_time=creation_time,
+                players_stats=players, winning_team_stats=winning_team, losing_team_stats=losing_team)
+        return match
+
+    @classmethod
+    def _parse_player_stats(cls,  j_participant, j_participant_identity):
+        pstats = model.PlayerStats(0)
+        pstats.summoner_id = j_participant_identity['player']['summonerId']
+        pstats.champion_id = j_participant['championId']
+
+        j_participant_stats = j_participant['stats']
+        pstats.kills = j_participant_stats['kills']
+        pstats.deaths = j_participant_stats['deaths']
+        pstats.assists = j_participant_stats['assists']
+        pstats.damage_dealt = j_participant_stats['totalDamageDealtToChampions']
+        pstats.damage_taken = j_participant_stats['totalDamageTaken']
+        pstats.gold = j_participant_stats['goldEarned']
+        pstats.cs = j_participant_stats['minionsKilled']
+        pstats.won = j_participant_stats['winner']
+        return pstats
+
+    @classmethod
+    def _aggregate_team_stats(cls, players):
+        tstats = model.TeamStats()
+        stats = ['kills', 'deaths', 'assists', 'damage_dealt', 'damage_taken', 'cs', 'gold']
+        for stat in stats:
+            setattr(tstats, stat, sum(getattr(x, stat) for x in players))
+        return tstats

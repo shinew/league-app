@@ -20,26 +20,25 @@ A player's perspective on a match he has played in.
 ## match
 A match's player-agnostic data.
 
-| name                    | type |
-| ---                     | ---  |
-| match_id (key1)         | int  |
-| creation_time           | int  |
-| duration                | int  |
-| red_won                 | bool |
-| red_team_kills          | int  |
-| red_team_deaths         | int  |
-| red_team_assists        | int  |
-| red_team_damage_dealt   | int  |
-| red_team_damage_taken   | int  |
-| red_team_cs             | int  |
-| red_team_gold_earned    | int  |
-| blue_team_kills         | int  |
-| blue_team_deaths        | int  |
-| blue_team_assists       | int  |
-| blue_team_damage_dealt  | int  |
-| blue_team_damage_taken  | int  |
-| blue_team_cs            | int  |
-| blue_team_gold_earned   | int  |
+| name                      | type |
+| ---                       | ---  |
+| match_id (key1)           | int  |
+| creation_time             | int  |
+| duration                  | int  |
+| win_team_kills            | int  |
+| winning_team_deaths       | int  |
+| winning_team_assists      | int  |
+| winning_team_damage_dealt | int  |
+| winning_team_damage_taken | int  |
+| winning_team_cs           | int  |
+| winning_team_gold_earned  | int  |
+| losing_team_kills         | int  |
+| losing_team_deaths        | int  |
+| losing_team_assists       | int  |
+| losing_team_damage_dealt  | int  |
+| losing_team_damage_taken  | int  |
+| losing_team_cs            | int  |
+| losing_team_gold_earned   | int  |
 
 ## summoner
 
@@ -101,9 +100,9 @@ WHERE [AND champion_id = %s] [AND tier_id = %s]
 (for tier & champion)
 
 SELECT AVERAGE(
-    CASE WHEN game.won = match.red_won
-        THEN kills/match.red_team_kills
-        DEFAULT THEN kills/match.blue_team_kills
+    CASE WHEN game.won = match.winning_won
+        THEN kills/match.winning_team_kills
+        DEFAULT THEN kills/match.losing_team_kills
 )
 FROM game
 GROUP BY champion_id, tier_id
