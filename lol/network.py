@@ -64,11 +64,9 @@ class APITaskQueue(object):
         self._thread_pool.start()
 
     def _check_and_run(self):
-        task = None
         with self._cv:
             task = self._cv.wait_for(self._queue.get)
         if self._need_key:
-            key = None
             with self._key_lock:
                 key = self._api_keys[self._key_counter]
                 self._key_counter = (self._key_counter + 1) % len(self._api_keys)

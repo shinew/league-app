@@ -3,7 +3,6 @@ ___doc___ = '''Tasks for the API.
 '''
 
 
-import logging
 import lol.api as api
 import lol.db as db
 import lol.model as model
@@ -28,7 +27,6 @@ def add_match_list(summoner_id, key=''):
     if match_list is None:
         return False
 
-    logging.info('Adding match list for %s', summoner_id)
     summoner_champions = _get_summoner_champions(match_list, summoner_id)
     db.add_summoner_champions(summoner_champions)
 
@@ -44,7 +42,6 @@ def add_summoner_tier(summoner_id, key=''):
     if tier is None:
         return False
 
-    logging.info('Adding summoner tier for %s', summoner_id)
     summoner = model.Summoner(summoner_id, tier)
     db.add_summoner(summoner)
     return True
@@ -59,7 +56,6 @@ def add_match_info(match_id, key=''):
     if match is None:
         return False
 
-    logging.info('Adding match info for %s', match_id)
     db.add_match(match)
 
     summoner_ids = [x.summoner_id for x in match.players_stats \
