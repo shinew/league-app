@@ -10,16 +10,11 @@ import sys
 
 import lol.model as model
 
-
+@enum.unique
 class status(enum.IntEnum):
-    ok = 200
-    bad_request = 400
-    unauthorized = 401
-    forbidden = 403
-    rate_limit_exceeded = 429
-    server_error = 500
-    server_unavailable = 503
-
+    ok = 1
+    failed_request = 2
+    malformed_request = 3
 
 class RiotRequest(object):
     '''Base class for Riot API calls.'''
@@ -32,13 +27,14 @@ class RiotRequest(object):
         constructed_url = cls.base_url + cls.path.format(**kwargs)
         try:
             result = requests.get(constructed_url, params={'api_key': key})
-            if result.status_code == status.ok:
-                return cls._parse(result.json(), **kwargs)
         except:
             logging.warning('%s', sys.exc_info())
-        else:
-            logging.warning('Failed request %s with status code %s',
-                    constructed_url, result.status_code)
+            return (status.failed_request, None)
+        try:
+            assert result.status_code == 200
+            return (status.ok, cls._parse(result.json(), **kwargs))
+        except:
+            return (status.malformed_request, None)
 
     @classmethod
     def _parse(cls, json, **kwargs):

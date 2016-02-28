@@ -35,12 +35,12 @@ def add_summoner_champions(champions):
 
 @with_lock
 def has_summoner_id(summoner_id):
-    return _match_ids
+    return summoner_id in _summoner_ids
 
 
 @with_lock
 def has_match_id(match_id):
-    return False
+    return match_id in _match_ids
 
 
 #TODO(shine): load has_* methods on start-up
