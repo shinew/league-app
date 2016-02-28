@@ -26,3 +26,6 @@ def has_summoner_id(summoner_id):
 
 def has_match_id(match_id):
     return False
+
+
+#TODO(shine): load has_* methods on start-up
